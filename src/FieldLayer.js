@@ -54,15 +54,15 @@ function buildTexture(lons, lats, field, { colorFn, alpha, levels, vmin, vmax })
     ? (j, i) => field[j * nlon + i]
     : (j, i) => field[j][i];
 
-  // Auto min/max
+  // Auto min/max (skip NaN)
   let minV = vmin, maxV = vmax;
   if (minV == null || maxV == null) {
     minV = Infinity; maxV = -Infinity;
     for (let j = 0; j < nlat; j++) {
       for (let i = 0; i < nlon; i++) {
         const v = get(j, i);
-        if (v < minV) minV = v;
-        if (v > maxV) maxV = v;
+        if (!isNaN(v) && v < minV) minV = v;
+        if (!isNaN(v) && v > maxV) maxV = v;
       }
     }
   }
@@ -100,11 +100,20 @@ function buildTexture(lons, lats, field, { colorFn, alpha, levels, vmin, vmax })
       const j0 = Math.max(0, Math.floor(gj)), j1 = Math.min(j0 + 1, nlat - 1);
       const fi = gi - i0, fj = gj - j0;
 
+      const v00 = get(j0, i0), v01 = get(j0, i1);
+      const v10 = get(j1, i0), v11 = get(j1, i1);
+
+      const idx = (row * TEX_W + col) * 4;
+      if (isNaN(v00) || isNaN(v01) || isNaN(v10) || isNaN(v11)) {
+        buf[idx + 3] = 0;
+        continue;
+      }
+
       const val = (
-        get(j0, i0) * (1 - fi) * (1 - fj) +
-        get(j0, i1) *      fi  * (1 - fj) +
-        get(j1, i0) * (1 - fi) *      fj  +
-        get(j1, i1) *      fi  *      fj
+        v00 * (1 - fi) * (1 - fj) +
+        v01 *      fi  * (1 - fj) +
+        v10 * (1 - fi) *      fj  +
+        v11 *      fi  *      fj
       );
 
       let t = (val - minV) / range;
@@ -115,7 +124,6 @@ function buildTexture(lons, lats, field, { colorFn, alpha, levels, vmin, vmax })
       }
 
       const [r, g, b] = colorFn(Math.max(0, Math.min(1, t)));
-      const idx = (row * TEX_W + col) * 4;
       buf[idx]     = r;
       buf[idx + 1] = g;
       buf[idx + 2] = b;

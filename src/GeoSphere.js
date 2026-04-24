@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { FieldLayer } from './FieldLayer.js';
+import { ContourLayer } from './ContourLayer.js';
 import { FEATURE_URLS } from './features.js';
 
 const GLOBE_RADIUS = 100;
@@ -131,6 +132,20 @@ export class GeoSphere {
     return this.#addField('contourf', lons, lats, field, { ...options, levels });
   }
 
+  /**
+   * Contour isolines — equivalent to ax.contour() in cartopy.
+   * options.levels: number of levels or explicit threshold array (default 8)
+   * options.cmap:   colormap for level colors (overrides options.color)
+   * options.color:  single color for all lines (default '#ffffff')
+   */
+  contour(lons, lats, field, options = {}) {
+    const layer = new ContourLayer(lons, lats, field, options, GLOBE_RADIUS);
+    this.#scene.add(layer.mesh);
+    const id = `contour_${Date.now()}`;
+    this.#layers.push({ id, type: 'contour', layer });
+    return id;
+  }
+
   #addField(type, lons, lats, field, options) {
     const layer = new FieldLayer(lons, lats, field, options, GLOBE_RADIUS);
     this.#scene.add(layer.mesh);
@@ -169,9 +184,91 @@ export class GeoSphere {
     return this;
   }
 
+  // ── Animation ────────────────────────────────────────────────────────────────
+
+  /**
+   * Animate through an array of field frames — for S2S lead-time steps.
+   *
+   * frames: array of { lons, lats, field } objects
+   *         OR compact format { lons, lats, frames: [{ field, coord_value }] }
+   *         (the compact format is what pyterraplot.frames_compact() produces)
+   *
+   * options.type:         layer type to use — 'pcolormesh' | 'contourf' (default 'pcolormesh')
+   * options.interval:     ms between frames (default 600)
+   * options.loop:         loop back to start (default true)
+   * options.layerOptions: passed to the plot call
+   * options.onFrame:      callback(frameIndex, frameData) fired each step
+   *
+   * Returns { play, pause, stop, seek(i), frame }
+   */
+  animate(frames, options = {}) {
+    const {
+      type         = 'pcolormesh',
+      interval     = 600,
+      loop         = true,
+      layerOptions = {},
+      onFrame      = null,
+    } = options;
+
+    // Support compact format from pyterraplot
+    let frameList, sharedLons, sharedLats;
+    if (!Array.isArray(frames) && frames.frames) {
+      sharedLons = frames.lons;
+      sharedLats = frames.lats;
+      frameList  = frames.frames;
+    } else {
+      frameList = frames;
+    }
+
+    let idx     = 0;
+    let running = false;
+    let timerId = null;
+
+    const show = (i) => {
+      const f    = frameList[i];
+      const lons = sharedLons ?? f.lons;
+      const lats = sharedLats ?? f.lats;
+      this.clear(type);
+      this[type](lons, lats, f.field, layerOptions);
+      onFrame?.(i, f);
+    };
+
+    const tick = () => {
+      show(idx);
+      idx = (idx + 1) % frameList.length;
+      if (!loop && idx === 0) pause();
+    };
+
+    const play = () => {
+      if (running) return;
+      running = true;
+      tick();
+      timerId = setInterval(tick, interval);
+    };
+
+    const pause = () => {
+      running = false;
+      clearInterval(timerId);
+    };
+
+    const stop = () => {
+      pause();
+      idx = 0;
+      this.clear(type);
+    };
+
+    const seek = (i) => {
+      idx = Math.max(0, Math.min(frameList.length - 1, i));
+      show(idx);
+    };
+
+    play();
+    return { play, pause, stop, seek, get frame() { return idx; } };
+  }
+
   // ── Layer management ─────────────────────────────────────────────────────────
 
-  /** Remove all layers of a given type ('pcolormesh', 'contourf') or by id. */
+  /** Remove all layers of a given type ('pcolormesh', 'contourf', 'contour') or by id. */
   clear(typeOrId) {
     this.#layers = this.#layers.filter(({ id, type, layer }) => {
       if (id === typeOrId || type === typeOrId) {
