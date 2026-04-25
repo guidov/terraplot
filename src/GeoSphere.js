@@ -161,8 +161,8 @@ export class GeoSphere {
    * Equivalent to ax.add_feature(cartopy.feature.COASTLINES).
    */
   addFeature(feature, options = {}) {
-    const { color = '#ffffff', linewidth = 0.6, opacity = 0.7 } = options;
-    const url = FEATURE_URLS[feature];
+    const { color = '#ffffff', linewidth = 0.6, opacity = 0.7, url: urlOverride = null } = options;
+    const url = urlOverride ?? FEATURE_URLS[feature];
     if (!url) { console.warn(`terraplot: unknown feature "${feature}"`); return this; }
 
     fetch(url)
