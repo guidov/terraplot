@@ -11,21 +11,31 @@ import { resolveColormap } from './colormaps.js';
 export class ContourLayer {
   constructor(lons, lats, field, options, globeRadius) {
     const {
-      levels  = 8,
-      cmap    = null,
-      color   = '#ffffff',
-      alpha   = 0.9,
-      vmin    = null,
-      vmax    = null,
-      zorder  = 1,
+      levels      = 8,
+      cmap        = null,
+      color       = '#ffffff',
+      alpha       = 0.9,
+      vmin        = null,
+      vmax        = null,
+      zorder      = 1,
+      smoothFactor = 4,   // bilinear upsample before contouring (1 = off)
+      chaikin      = 2,   // corner-cutting iterations on output rings (0 = off)
     } = options;
 
-    const nlon = lons.length;
-    const nlat = lats.length;
+    let nlon = lons.length;
+    let nlat = lats.length;
     const r = globeRadius * (1.006 + zorder * 0.001);
 
     // Flatten to Float32Array (row-major, j=lat index, i=lon index)
-    const flat = flattenField(field, nlat, nlon);
+    let flat = flattenField(field, nlat, nlon);
+
+    // Bilinear upsample before contouring — reduces marching-squares staircase.
+    // Mirrors what VTK/ParaView do: operate on a finer grid so contour edges
+    // sit at sub-cell positions. scipy.ndimage.gaussian_filter is the cartopy
+    // equivalent on the Python side.
+    if (smoothFactor > 1) {
+      ({ field: flat, nlat, nlon } = upsampleField(flat, nlat, nlon, smoothFactor));
+    }
 
     // Min/max
     let minV = vmin, maxV = vmax;
@@ -50,8 +60,8 @@ export class ContourLayer {
     const rawContours = contourGen(flat);
 
     const colorFn  = cmap ? resolveColormap(cmap) : null;
-    const latRange = lats[nlat - 1] - lats[0];
-    const lonRange = lons[nlon - 1] - lons[0];
+    const latRange = lats[lats.length - 1] - lats[0];
+    const lonRange = lons[lons.length - 1] - lons[0];
 
     const positions = [];
     const vertColors = [];
@@ -65,9 +75,14 @@ export class ContourLayer {
 
       for (const polygon of c.coordinates) {
         for (const ring of polygon) {
-          for (let k = 0; k < ring.length - 1; k++) {
-            const [gx0, gy0] = ring[k];
-            const [gx1, gy1] = ring[k + 1];
+          // Chaikin corner-cutting — converges to quadratic B-spline.
+          // Used in D3's curveCatmullRom; here applied to the ring vertices
+          // in grid space before projecting onto the sphere.
+          const smoothedRing = chaikin > 0 ? chaikinSmooth(ring, chaikin) : ring;
+
+          for (let k = 0; k < smoothedRing.length - 1; k++) {
+            const [gx0, gy0] = smoothedRing[k];
+            const [gx1, gy1] = smoothedRing[k + 1];
 
             // Grid coords → lon/lat (d3-contour uses [col, row] = [lon-index, lat-index])
             const lon0 = lons[0] + (gx0 / (nlon - 1)) * lonRange;
@@ -100,6 +115,57 @@ export class ContourLayer {
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Bilinear upsample — increases grid resolution before contouring.
+ * scale=4 turns a 94×192 NCEP grid into 373×765, giving d3-contour
+ * 16× more intersection points to choose from.
+ */
+function upsampleField(flat, nlat, nlon, scale) {
+  const nlat2 = (nlat - 1) * scale + 1;
+  const nlon2 = (nlon - 1) * scale + 1;
+  const out   = new Float32Array(nlat2 * nlon2);
+  for (let j2 = 0; j2 < nlat2; j2++) {
+    const gj = j2 / scale;
+    const j0 = Math.min(Math.floor(gj), nlat - 2);
+    const fj = gj - j0;
+    for (let i2 = 0; i2 < nlon2; i2++) {
+      const gi = i2 / scale;
+      const i0 = Math.min(Math.floor(gi), nlon - 2);
+      const fi = gi - i0;
+      out[j2 * nlon2 + i2] =
+        flat[ j0      * nlon + i0    ] * (1 - fi) * (1 - fj) +
+        flat[ j0      * nlon + (i0+1)] *      fi  * (1 - fj) +
+        flat[(j0 + 1) * nlon + i0    ] * (1 - fi) *      fj  +
+        flat[(j0 + 1) * nlon + (i0+1)] *      fi  *      fj;
+    }
+  }
+  return { field: out, nlat: nlat2, nlon: nlon2 };
+}
+
+/**
+ * Chaikin's corner-cutting algorithm on a ring of [x,y] grid coords.
+ * Each iteration doubles the point count and rounds corners toward a
+ * quadratic B-spline. 2–3 iterations is enough for smooth contours.
+ */
+function chaikinSmooth(ring, iterations) {
+  let pts = ring;
+  const closed = pts[0][0] === pts[pts.length - 1][0] &&
+                 pts[0][1] === pts[pts.length - 1][1];
+  for (let iter = 0; iter < iterations; iter++) {
+    const next = [];
+    const n = closed ? pts.length - 1 : pts.length - 1;
+    for (let i = 0; i < n; i++) {
+      const [x0, y0] = pts[i];
+      const [x1, y1] = pts[i + 1];
+      next.push([0.75 * x0 + 0.25 * x1, 0.75 * y0 + 0.25 * y1]);
+      next.push([0.25 * x0 + 0.75 * x1, 0.25 * y0 + 0.75 * y1]);
+    }
+    if (closed) next.push(next[0]);
+    pts = next;
+  }
+  return pts;
+}
 
 function flattenField(field, nlat, nlon) {
   const isFlat = !Array.isArray(field[0]) &&
