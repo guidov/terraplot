@@ -13,7 +13,7 @@
     background: rgba(255,255,255,.06); border-bottom: 1px solid rgba(255,255,255,.1);
     flex-shrink: 0; flex-wrap: wrap;
   }
-  #toolbar h1 { font-size: .95rem; font-weight: 600; color: #94d2bd; margin-right: 8px; }
+  #toolbar h1 { font-size: .95rem; font-weight: 600; color: #94d2bd; margin-right: 4px; }
 
   .btn {
     padding: 5px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,.2);
@@ -22,28 +22,28 @@
   }
   .btn:hover { background: rgba(255,255,255,.15); }
   .btn.active { background: #0e7490; border-color: #22d3ee; }
+  .btn.source.active { background: #166534; border-color: #4ade80; }
 
-  .sep { width: 1px; height: 20px; background: rgba(255,255,255,.15); }
+  .sep { width: 1px; height: 20px; background: rgba(255,255,255,.15); flex-shrink: 0; }
+  .label { font-size: .72rem; color: #64748b; white-space: nowrap; }
 
-  #status {
-    margin-left: auto; font-size: .75rem; color: #94a3b8; white-space: nowrap;
-  }
+  #status { margin-left: auto; font-size: .75rem; color: #94a3b8; white-space: nowrap; }
 
   #globe { flex: 1; }
 
   #legend {
     position: fixed; bottom: 1rem; right: 1rem;
-    background: rgba(9,9,18,.75); border: 1px solid rgba(255,255,255,.12);
-    border-radius: 8px; padding: .6rem .8rem; font-size: .75rem; min-width: 130px;
+    background: rgba(9,9,18,.78); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 8px; padding: .6rem .9rem; font-size: .75rem; min-width: 160px;
   }
-  #legend h3 { font-size: .72rem; color: #94a3b8; margin-bottom: .4rem; letter-spacing: .05em; text-transform: uppercase; }
+  #legend h3 { font-size: .7rem; color: #94a3b8; margin-bottom: .4rem; text-transform: uppercase; letter-spacing: .05em; }
   #legend-bar { height: 10px; border-radius: 3px; margin-bottom: .3rem; }
   #legend-labels { display: flex; justify-content: space-between; color: #cbd5e1; }
 
   #frame-info {
     position: fixed; bottom: 1rem; left: 1rem;
-    background: rgba(9,9,18,.75); border: 1px solid rgba(255,255,255,.12);
-    border-radius: 8px; padding: .5rem .8rem; font-size: .75rem; color: #94a3b8;
+    background: rgba(9,9,18,.78); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 8px; padding: .5rem .8rem; font-size: .8rem; color: #94a3b8;
     display: none;
   }
 </style>
@@ -53,18 +53,33 @@
   <h1>terraplot</h1>
   <div class="sep"></div>
 
-  <span style="font-size:.75rem;color:#94a3b8">Layer:</span>
-  <button class="btn active" id="btn-pcolor">pcolormesh</button>
-  <button class="btn" id="btn-contourf">contourf</button>
-  <button class="btn" id="btn-contour">contour</button>
-  <button class="btn" id="btn-animate">animate</button>
+  <span class="label">Source:</span>
+  <button class="btn source active" data-source="syn">synthetic</button>
+  <button class="btn source" data-source="real">NCEP / CMAP</button>
 
   <div class="sep"></div>
 
-  <span style="font-size:.75rem;color:#94a3b8">Field:</span>
-  <button class="btn active" id="btn-temp">temperature</button>
-  <button class="btn" id="btn-precip">precipitation</button>
-  <button class="btn" id="btn-wave">wave</button>
+  <span class="label">Layer:</span>
+  <button class="btn active" data-layer="pcolormesh">pcolormesh</button>
+  <button class="btn" data-layer="contourf">contourf</button>
+  <button class="btn" data-layer="contour">contour</button>
+  <button class="btn" data-layer="animate">animate</button>
+
+  <div class="sep"></div>
+
+  <span class="label">Field:</span>
+
+  <span id="fields-syn" style="display:flex;gap:6px;align-items:center">
+    <button class="btn active" data-field="temp">temperature</button>
+    <button class="btn" data-field="precip">precipitation</button>
+    <button class="btn" data-field="wave">wave</button>
+  </span>
+
+  <span id="fields-real" style="display:none;gap:6px;align-items:center">
+    <button class="btn active" data-field="t2m_anom">T2m anomaly</button>
+    <button class="btn" data-field="precip">precipitation</button>
+    <button class="btn" data-field="precip_anom">precip anomaly</button>
+  </span>
 
   <div class="sep"></div>
 
@@ -75,12 +90,14 @@
 </div>
 
 <div id="globe"></div>
+
 <div id="legend">
   <h3 id="legend-title">Temperature</h3>
   <div id="legend-bar"></div>
   <div id="legend-labels"><span id="leg-min"></span><span id="leg-max"></span></div>
 </div>
-<div id="frame-info" id="frame-info">frame <span id="frame-idx">0</span></div>
+
+<div id="frame-info">lead <span id="frame-idx">—</span></div>
 
 <script type="module" src="./main.js"></script>
 </body>
