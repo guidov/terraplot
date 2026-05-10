@@ -1,6 +1,9 @@
 export { GeoSphere } from './GeoSphere.js';
+export { GeoMap } from './GeoMap.js';
 export { unpackField, unpackFrames } from './unpack.js';
 export { FieldLayer } from './FieldLayer.js';
 export { ContourLayer } from './ContourLayer.js';
+export { QuiverLayer } from './QuiverLayer.js';
+export { Colorbar } from './Colorbar.js';
 export { Colormaps, resolveColormap } from './colormaps.js';
 export { Features } from './features.js';
