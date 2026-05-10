@@ -1,3 +1,4 @@
+import { CmoceanColormaps } from './cmocean.js';
 import {
   interpolateViridis,
   interpolatePlasma,
@@ -5,11 +6,14 @@ import {
   interpolateMagma,
   interpolateRdYlBu,
   interpolateRdBu,
+  interpolateSpectral,
   interpolateBuPu,
   interpolateYlGnBu,
+  interpolatePuBuGn,
   interpolateOrRd,
   interpolateBlues,
   interpolateGreens,
+  interpolateGreys,
   interpolateYlOrRd,
 } from 'd3-scale-chromatic';
 
@@ -41,23 +45,32 @@ export const Colormaps = {
   magma:     wrap(interpolateMagma),
 
   // Diverging — most useful for anomalies
-  RdYlBu:   wrap(interpolateRdYlBu),
-  RdYlBu_r: wrapR(interpolateRdYlBu),  // warm=red, cold=blue (standard temp anomaly)
-  RdBu:     wrap(interpolateRdBu),
-  RdBu_r:   wrapR(interpolateRdBu),
+  RdYlBu:    wrap(interpolateRdYlBu),
+  RdYlBu_r:  wrapR(interpolateRdYlBu),  // warm=red, cold=blue (standard temp anomaly)
+  RdBu:      wrap(interpolateRdBu),
+  RdBu_r:    wrapR(interpolateRdBu),
+  Spectral:  wrap(interpolateSpectral),
+  Spectral_r: wrapR(interpolateSpectral),
 
   // Sequential multi-hue
   BuPu:     wrap(interpolateBuPu),
   YlGnBu:   wrap(interpolateYlGnBu),   // good for precip
+  PuBuGn:   wrap(interpolatePuBuGn),   // good for SST
   OrRd:     wrap(interpolateOrRd),
   YlOrRd:   wrap(interpolateYlOrRd),
   Blues:    wrap(interpolateBlues),
   Greens:   wrap(interpolateGreens),
+  Greys:    wrap(interpolateGreys),    // cloud cover, wind speed
 };
 
 // Allow string lookup: Colormaps['viridis'] or Colormaps.viridis
 export function resolveColormap(cmap) {
   if (typeof cmap === 'function') return cmap;
-  if (typeof cmap === 'string' && Colormaps[cmap]) return Colormaps[cmap];
-  throw new Error(`terraplot: unknown colormap "${cmap}". Available: ${Object.keys(Colormaps).join(', ')}`);
+  if (typeof cmap === 'string') {
+    if (Colormaps[cmap]) return Colormaps[cmap];
+    if (CmoceanColormaps[cmap]) return CmoceanColormaps[cmap];
+    const all = [...Object.keys(Colormaps), ...Object.keys(CmoceanColormaps)].join(', ');
+    throw new Error(`terraplot: unknown colormap "${cmap}". Available: ${all}`);
+  }
+  throw new Error(`terraplot: cmap must be a string or function`);
 }
