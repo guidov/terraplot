@@ -1,6 +1,6 @@
 {
   "name": "terraplot",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Cartopy-inspired scientific field visualization for 3D browser globes",
   "type": "module",
   "main": "dist/terraplot.cjs",
@@ -19,7 +19,11 @@
   "keywords": ["globe", "cartopy", "gis", "climate", "weather", "visualization", "three.js", "scientific"],
   "license": "MIT",
   "peerDependencies": {
-    "three": ">=0.150.0"
+    "three": ">=0.150.0",
+    "geotiff": ">=2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "geotiff": { "optional": true }
   },
   "dependencies": {
     "d3-contour": "^4.0.2",
