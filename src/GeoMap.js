@@ -168,7 +168,7 @@ export class GeoMap {
         type: 'Feature',
         geometry: {
           type: 'Polygon',
-          coordinates: [[[lon0, lat0], [lon1, lat0], [lon1, lat1], [lon0, lat1], [lon0, lat0]]],
+          coordinates: [[[lon0, lat0], [lon0, lat1], [lon1, lat1], [lon1, lat0], [lon0, lat0]]],
         },
       };
       this._proj.fitExtent([[pad, pad], [this._w - pad, this._h - pad]], bboxGeo);
@@ -299,7 +299,7 @@ export class GeoMap {
   addFeature(type, opts = {}) {
     const defaultColor = type === 'coastlines'
       ? 'rgba(200,220,255,0.85)' : 'rgba(180,180,200,0.5)';
-    const { color = defaultColor, linewidth = 0.8, opacity = 1, url = null } = opts;
+    const { color = defaultColor, linewidth = 0.8, opacity = 1, url = null, fill = 'none' } = opts;
 
     // Idempotent: if a group of this type already exists, just update its style
     const existing = this._featureGroups.find(fg => fg.type === type);
@@ -319,7 +319,7 @@ export class GeoMap {
     g.setAttribute('opacity', String(opacity));
     this._svg.appendChild(g);
 
-    const fg = { type, opts: { color, linewidth, opacity }, svgGroup: g, geojson: null };
+    const fg = { type, opts: { color, linewidth, opacity, fill }, svgGroup: g, geojson: null };
     this._featureGroups.push(fg);
 
     fetch(featureUrl)
@@ -513,7 +513,7 @@ export class GeoMap {
     fg.svgGroup.innerHTML = '';
     const el = document.createElementNS(this._NS, 'path');
     el.setAttribute('d', this._path(fg.geojson));
-    el.setAttribute('fill', 'none');
+    el.setAttribute('fill', fg.opts.fill || 'none');
     el.setAttribute('stroke', fg.opts.color);
     el.setAttribute('stroke-width', String(fg.opts.linewidth));
     fg.svgGroup.appendChild(el);
@@ -696,7 +696,7 @@ export class GeoMap {
       this._proj.fitExtent(
         [[pad, pad], [w - pad, h - pad]],
         { type: 'Feature', geometry: { type: 'Polygon',
-          coordinates: [[[lon0, lat0], [lon1, lat0], [lon1, lat1], [lon0, lat1], [lon0, lat0]]] } },
+          coordinates: [[[lon0, lat0], [lon0, lat1], [lon1, lat1], [lon1, lat0], [lon0, lat0]]] } },
       );
     } else {
       this._proj.fitSize([w, h], { type: 'Sphere' });
@@ -728,7 +728,7 @@ export class GeoMap {
         type: 'Feature',
         geometry: {
           type: 'Polygon',
-          coordinates: [[[lon0, lat0], [lon1, lat0], [lon1, lat1], [lon0, lat1], [lon0, lat0]]],
+          coordinates: [[[lon0, lat0], [lon0, lat1], [lon1, lat1], [lon1, lat0], [lon0, lat0]]],
         },
       },
     );
@@ -738,6 +738,8 @@ export class GeoMap {
   }
 
   _redrawAll() {
+    this._path = geoPath().projection(this._proj);
+
     // 1. Update static SVG elements
     this._sphereEl.setAttribute('d', this._path({ type: 'Sphere' }));
     if (this._gratEl) this._gratEl.setAttribute('d', this._path(geoGraticule()()));
