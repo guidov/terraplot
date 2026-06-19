@@ -78,6 +78,7 @@ export class GeoMap {
       center         = [0, 0],
       rotate         = null,
       tooltip        = true,
+      interactive    = true,
       // extent: [lon0, lon1, lat0, lat1] — zoom to a region (like cartopy set_extent)
       extent         = null,
     } = options;
@@ -92,6 +93,7 @@ export class GeoMap {
     this._fieldData      = null;
     this._gratEl         = null;
     this._activeAnims    = [];
+    this._extent         = extent || null;
 
     const rect = this._el.getBoundingClientRect();
     this._w = rect.width  || 900;
@@ -139,6 +141,9 @@ export class GeoMap {
     // Forward clicks to user handlers — pointer-events on canvas are on by default
     this._canvas.style.pointerEvents = 'auto';
     this._canvas.addEventListener('click', this._onClick.bind(this));
+
+    // Interactive drag-to-pan and scroll-to-zoom
+    if (interactive) this._setupInteraction();
 
     // Auto-resize on container changes — keeps projection fitted to new size
     this._resizeObs = new ResizeObserver(() => this._handleResize());
@@ -452,6 +457,58 @@ export class GeoMap {
     for (const fn of this._clickHandlers) fn({ lat, lon, value, x: px, y: py });
   }
 
+  _setupInteraction() {
+    let dragging = false, dragMoved = false;
+    let sx, sy, stx, sty;
+    this._canvas.style.cursor = 'grab';
+
+    this._canvas.addEventListener('mousedown', (e) => {
+      dragging = true; dragMoved = false;
+      sx = e.clientX; sy = e.clientY;
+      const t = this._proj.translate();
+      stx = t[0]; sty = t[1];
+      this._canvas.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+
+    const onMove = (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
+      this._proj.translate([stx + dx, sty + dy]);
+      this._redrawAll();
+    };
+    const onUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      this._canvas.style.cursor = 'grab';
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+
+    // Suppress click after drag
+    this._canvas.addEventListener('click', (e) => {
+      if (dragMoved) { e.stopImmediatePropagation(); dragMoved = false; }
+    }, true);
+
+    // Scroll-wheel zoom centred on cursor
+    this._el.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      const rect = this._canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const s0 = this._proj.scale();
+      const t0 = this._proj.translate();
+      const s1 = s0 * factor;
+      // Keep geographic point under cursor fixed
+      const tx = mx - (mx - t0[0]) * (s1 / s0);
+      const ty = my - (my - t0[1]) * (s1 / s0);
+      this._proj.scale(s1).translate([tx, ty]);
+      this._redrawAll();
+    }, { passive: false });
+  }
+
   _renderFeature(fg) {
     fg.svgGroup.innerHTML = '';
     const el = document.createElementNS(this._NS, 'path');
@@ -631,14 +688,23 @@ export class GeoMap {
     this._svg.setAttribute('width',  w);
     this._svg.setAttribute('height', h);
 
-    // Refit projection to new size.  Preserve any custom rotate.
+    // Refit projection to new size, preserving regional extent if set.
     const rot = this._proj.rotate();
-    this._proj.fitSize([w, h], { type: 'Sphere' });
-    this._proj.rotate(rot);
+    if (this._extent) {
+      const [lon0, lon1, lat0, lat1] = this._extent;
+      const pad = Math.min(w, h) * 0.04;
+      this._proj.fitExtent(
+        [[pad, pad], [w - pad, h - pad]],
+        { type: 'Feature', geometry: { type: 'Polygon',
+          coordinates: [[[lon0, lat0], [lon1, lat0], [lon1, lat1], [lon0, lat1], [lon0, lat0]]] } },
+      );
+    } else {
+      this._proj.fitSize([w, h], { type: 'Sphere' });
+      this._proj.rotate(rot);
+    }
     this._path = geoPath().projection(this._proj);
 
     this._redrawAll();
-    this._markers.forEach(m => this._renderMarker(m));
     if (this._titleEl) this._titleEl.setAttribute('x', w / 2);
   }
 
@@ -654,6 +720,7 @@ export class GeoMap {
    * @param {[number, number, number, number]} extent  [lon0, lon1, lat0, lat1]
    */
   setExtent([lon0, lon1, lat0, lat1]) {
+    this._extent = [lon0, lon1, lat0, lat1];
     const pad = Math.min(this._w, this._h) * 0.04;
     this._proj.fitExtent(
       [[pad, pad], [this._w - pad, this._h - pad]],
