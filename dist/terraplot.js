@@ -3090,10 +3090,23 @@ class Vo {
           ]);
           const segments = [];
           let currentSegment = [K[0]];
+          const threshold = Math.max(100, this._w * 0.25);
           for (let m = 0; m < K.length - 1; m++) {
             const p1 = K[m];
             const p2 = K[m + 1];
-            if (Math.abs(p1[0] - p2[0]) > 180) {
+            const proj1 = this._proj(p1);
+            const proj2 = this._proj(p2);
+            let split = false;
+            if (proj1 && proj2 && isFinite(proj1[0]) && isFinite(proj1[1]) && isFinite(proj2[0]) && isFinite(proj2[1])) {
+              const dx = proj1[0] - proj2[0];
+              const dy = proj1[1] - proj2[1];
+              if (dx * dx + dy * dy > threshold * threshold) {
+                split = true;
+              }
+            } else {
+              split = true;
+            }
+            if (split) {
               segments.push(currentSegment);
               currentSegment = [p2];
             } else {
@@ -3477,10 +3490,23 @@ class Vo {
           ]);
           const segments = [];
           let currentSegment = [H[0]];
+          const threshold = Math.max(100, this._w * 0.25);
           for (let m = 0; m < H.length - 1; m++) {
             const p1 = H[m];
             const p2 = H[m + 1];
-            if (Math.abs(p1[0] - p2[0]) > 180) {
+            const proj1 = this._proj(p1);
+            const proj2 = this._proj(p2);
+            let split = false;
+            if (proj1 && proj2 && isFinite(proj1[0]) && isFinite(proj1[1]) && isFinite(proj2[0]) && isFinite(proj2[1])) {
+              const dx = proj1[0] - proj2[0];
+              const dy = proj1[1] - proj2[1];
+              if (dx * dx + dy * dy > threshold * threshold) {
+                split = true;
+              }
+            } else {
+              split = true;
+            }
+            if (split) {
               segments.push(currentSegment);
               currentSegment = [p2];
             } else {
