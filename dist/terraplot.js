@@ -3367,11 +3367,16 @@ class Vo {
     for (let S = 0; S < E; S++)
       for (let F = 0; F < d; F++) {
         const px = (F + 0.5) * b, py = (S + 0.5) * g;
-        if (this._projName && this._projName.toLowerCase().includes("orthographic")) {
+        if (this._proj) {
           const [tx, ty] = this._proj.translate();
           const sc = this._proj.scale();
-          const dx = px - tx, dy = py - ty;
-          if (dx * dx + dy * dy > sc * sc) continue;
+          if (this._projName && this._projName.toLowerCase().includes("orthographic")) {
+            const dx = px - tx, dy = py - ty;
+            if (dx * dx + dy * dy > sc * sc) continue;
+          } else {
+            // Stop horizontal wrapping/repetition beyond primary map boundaries
+            if (px < tx - sc * Math.PI || px > tx + sc * Math.PI) continue;
+          }
         }
         const v = this._proj.invert([px, py]);
         if (!v) continue;
@@ -3406,13 +3411,20 @@ class Vo {
   _onMove(t) {
     if (!this._tip || !this._fieldData) return;
     const n = this._canvas.getBoundingClientRect(), i = t.clientX - n.left, r = t.clientY - n.top;
-    if (this._projName && this._projName.toLowerCase().includes("orthographic")) {
+    if (this._proj) {
       const [tx, ty] = this._proj.translate();
       const sc = this._proj.scale();
-      const dx = i - tx, dy = r - ty;
-      if (dx * dx + dy * dy > sc * sc) {
-        this._tip.style.display = "none";
-        return;
+      if (this._projName && this._projName.toLowerCase().includes("orthographic")) {
+        const dx = i - tx, dy = r - ty;
+        if (dx * dx + dy * dy > sc * sc) {
+          this._tip.style.display = "none";
+          return;
+        }
+      } else {
+        if (i < tx - sc * Math.PI || i > tx + sc * Math.PI) {
+          this._tip.style.display = "none";
+          return;
+        }
       }
     }
     const a = this._proj.invert([i, r]);
