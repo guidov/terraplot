@@ -1504,13 +1504,37 @@ class Ao {
     Pt(this, dt, new z.WebGLRenderer({ antialias: !0 })), I(this, dt).setPixelRatio(window.devicePixelRatio), I(this, dt).setSize(i.clientWidth, i.clientHeight), i.appendChild(I(this, dt).domElement), Pt(this, et, new z.Scene()), I(this, et).background = new z.Color(r.background), Pt(this, ct, new z.PerspectiveCamera(50, i.clientWidth / i.clientHeight, 0.1, 5e4)), I(this, ct).position.z = Mt * 2.5, I(this, et).add(new z.AmbientLight(16777215, 0.85));
     const a = new z.DirectionalLight(16777215, 0.6);
     a.position.set(300, 200, 300), I(this, et).add(a);
-    const o = new z.TextureLoader(), s = new z.SphereGeometry(Mt, 72, 36), h = new z.MeshPhongMaterial({
-      map: o.load(r.globeTexture),
-      bumpMap: o.load(r.bumpTexture),
-      bumpScale: 0.5,
+    let globeTex = r.globeTexture;
+    let bumpTex = r.bumpTexture;
+    if (r.earthSurface === "satellite") {
+      globeTex = "https://unpkg.com/three-globe/example/img/earth-night.jpg";
+      bumpTex = "https://unpkg.com/three-globe/example/img/earth-topology.png";
+    } else if (r.earthSurface === "shaded_relief" || r.earthSurface === "stock") {
+      globeTex = "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg";
+      bumpTex = "https://unpkg.com/three-globe/example/img/earth-topology.png";
+    } else if (r.earthSurface === "outline") {
+      globeTex = "#0f172a";
+      bumpTex = "none";
+    } else if (r.earthSurface && (r.earthSurface.startsWith("http") || r.earthSurface.startsWith("/") || r.earthSurface.startsWith("."))) {
+      globeTex = r.earthSurface;
+    }
+    const o = new z.TextureLoader(), s = new z.SphereGeometry(Mt, 72, 36);
+    const materialOpts = {
       specular: new z.Color(2236962),
       shininess: 8
-    });
+    };
+    if (globeTex && globeTex.startsWith("#")) {
+      materialOpts.color = new z.Color(globeTex);
+    } else if (globeTex && globeTex !== "none") {
+      materialOpts.map = o.load(globeTex);
+      if (bumpTex && bumpTex !== "none") {
+        materialOpts.bumpMap = o.load(bumpTex);
+        materialOpts.bumpScale = 0.5;
+      }
+    } else {
+      materialOpts.color = new z.Color("#0b0f19");
+    }
+    const h = new z.MeshPhongMaterial(materialOpts);
     I(this, et).add(new z.Mesh(s, h)), Pt(this, at, new hr(I(this, ct), I(this, dt).domElement)), I(this, at).autoRotate = r.autoRotate, I(this, at).autoRotateSpeed = r.autoRotateSpeed, I(this, at).enableDamping = !0, I(this, at).dampingFactor = 0.05, I(this, at).minDistance = Mt * 1.15, I(this, at).maxDistance = Mt * 6, new ResizeObserver(() => {
       const l = i.clientWidth, f = i.clientHeight;
       I(this, ct).aspect = l / f, I(this, ct).updateProjectionMatrix(), I(this, dt).setSize(l, f);
@@ -2949,7 +2973,7 @@ class Vo {
       // extent: [lon0, lon1, lat0, lat1] — zoom to a region (like cartopy set_extent)
       extent: f = null
     } = n;
-    this._background = r, this._layers = [], this._featureGroups = [], this._markers = [], this._titleEl = null, this._clickHandlers = [], this._nextId = 0, this._fieldData = null, this._gratEl = null, this._activeAnims = [], this._extent = f || null, this._projName = i;
+    this._background = r, this._layers = [], this._featureGroups = [], this._markers = [], this._titleEl = null, this._clickHandlers = [], this._nextId = 0, this._fieldData = null, this._gratEl = null, this._activeAnims = [], this._extent = f || null, this._projName = i, this._bgImageData = null;
     const u = this._el.getBoundingClientRect();
     this._w = u.width || 900, this._h = u.height || 500, Object.assign(this._el.style, {
       position: "relative",
@@ -2988,6 +3012,11 @@ class Vo {
       this._proj.fitExtent([[x, x], [this._w - x, this._h - x]], m);
     }
     this._path = me().projection(this._proj), this._sphereEl = document.createElementNS(p, "path"), this._sphereEl.setAttribute("d", this._path({ type: "Sphere" })), this._sphereEl.setAttribute("fill", r), this._sphereEl.setAttribute("stroke", "rgba(255,255,255,0.25)"), this._sphereEl.setAttribute("stroke-width", "1"), this._svg.appendChild(this._sphereEl), a && (this._gratEl = document.createElementNS(p, "path"), this._gratEl.setAttribute("d", this._path(ri()())), this._gratEl.setAttribute("fill", "none"), this._gratEl.setAttribute("stroke", o), this._gratEl.setAttribute("stroke-width", "0.5"), this._svg.appendChild(this._gratEl));
+    if (n.earthSurface === "satellite") {
+      this.addBackgroundImage("https://unpkg.com/three-globe/example/img/earth-night.jpg");
+    } else if (n.earthSurface === "shaded_relief" || n.earthSurface === "stock") {
+      this.addBackgroundImage("https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg");
+    }
   }
   // ── Public field API (matches GeoSphere) ──────────────────────────────────
   /**
@@ -3297,8 +3326,62 @@ class Vo {
       }
     ), this._path = me().projection(this._proj), this._redrawAll(), this;
   }
+  addBackgroundImage(url) {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      this._bgImageData = ctx.getImageData(0, 0, img.width, img.height);
+      this._redrawAll();
+    };
+    img.src = url;
+    return this;
+  }
+  _drawBackgroundOnly() {
+    if (!this._bgImageData) return;
+    const d = Math.min(this._w, _o), E = Math.round(d * (this._h / this._w)), b = this._w / d, g = this._h / E, x = document.createElement("canvas");
+    x.width = d, x.height = E;
+    const m = x.getContext("2d"), w = m.createImageData(d, E), G = w.data;
+    const W_img = this._bgImageData.width, H_img = this._bgImageData.height, G_img = this._bgImageData.data;
+    for (let S = 0; S < E; S++) {
+      for (let F = 0; F < d; F++) {
+        const px = (F + 0.5) * b, py = (S + 0.5) * g;
+        if (this._projName && this._projName.toLowerCase().includes("orthographic")) {
+          const [tx, ty] = this._proj.translate();
+          const sc = this._proj.scale();
+          const dx = px - tx, dy = py - ty;
+          if (dx * dx + dy * dy > sc * sc) continue;
+        }
+        const v = this._proj.invert([px, py]);
+        if (!v) continue;
+        const [P, M] = v;
+        if (!isFinite(P) || !isFinite(M)) continue;
+        const projected = this._proj([P, M]);
+        if (projected && (Math.abs(projected[0] - px) > 1.0 || Math.abs(projected[1] - py) > 1.0)) continue;
+        
+        const imgX = Math.round(((P + 180) / 360) * (W_img - 1));
+        const imgY = Math.round(((90 - M) / 180) * (H_img - 1));
+        if (imgX >= 0 && imgX < W_img && imgY >= 0 && imgY < H_img) {
+          const idx = (imgY * W_img + imgX) * 4;
+          const N = (S * d + F) * 4;
+          G[N] = G_img[idx];
+          G[N + 1] = G_img[idx + 1];
+          G[N + 2] = G_img[idx + 2];
+          G[N + 3] = 255;
+        }
+      }
+    }
+    m.putImageData(w, 0, 0), this._ctx.clearRect(0, 0, this._w, this._h), this._ctx.drawImage(x, 0, 0, this._w, this._h);
+  }
   _redrawAll() {
     this._path = me().projection(this._proj), this._sphereEl.setAttribute("d", this._path({ type: "Sphere" })), this._gratEl && this._gratEl.setAttribute("d", this._path(ri()())), this._ctx.clearRect(0, 0, this._w, this._h);
+    if (this._bgImageData && this._layers.length === 0) {
+      this._drawBackgroundOnly();
+    }
     for (const t of this._layers)
       if (t.type === "pcolormesh" || t.type === "contourf") {
         const { lons: n, lats: i, field: r, opts: a } = t, o = Ee(n, i, r, a.vmin ?? null, a.vmax ?? null), s = t.type === "contourf" ? a.levels ?? 12 : null;
@@ -3379,12 +3462,34 @@ class Vo {
         if (!isFinite(P) || !isFinite(M)) continue;
         const projected = this._proj([P, M]);
         if (projected && (Math.abs(projected[0] - px) > 1.0 || Math.abs(projected[1] - py) > 1.0)) continue;
+        const W_img = this._bgImageData ? this._bgImageData.width : 0;
+        const H_img = this._bgImageData ? this._bgImageData.height : 0;
+        const G_img = this._bgImageData ? this._bgImageData.data : null;
+        let bgR = 15, bgG = 23, bgB = 42;
+        if (G_img) {
+          const imgX = Math.round(((P + 180) / 360) * (W_img - 1));
+          const imgY = Math.round(((90 - M) / 180) * (H_img - 1));
+          if (imgX >= 0 && imgX < W_img && imgY >= 0 && imgY < H_img) {
+            const idx = (imgY * W_img + imgX) * 4;
+            bgR = G_img[idx];
+            bgG = G_img[idx + 1];
+            bgB = G_img[idx + 2];
+          }
+        }
         const k = Xe(P, M, n, i, s, h, c);
-        if (isNaN(k)) continue;
+        const N = (S * d + F) * 4;
+        if (isNaN(k)) {
+          G[N] = bgR, G[N + 1] = bgG, G[N + 2] = bgB, G[N + 3] = G_img ? 255 : 0;
+          continue;
+        }
         let D = (k - l) / u;
         o != null && o > 1 && (D = Math.floor(D * o) / o);
-        const [U, j, y] = r(Math.max(0, Math.min(1, D))), N = (S * d + F) * 4;
-        G[N] = U, G[N + 1] = j, G[N + 2] = y, G[N + 3] = p;
+        const [U, j, y] = r(Math.max(0, Math.min(1, D)));
+        const alpha_f = p / 255.0;
+        G[N] = Math.round(U * alpha_f + bgR * (1 - alpha_f));
+        G[N + 1] = Math.round(j * alpha_f + bgG * (1 - alpha_f));
+        G[N + 2] = Math.round(y * alpha_f + bgB * (1 - alpha_f));
+        G[N + 3] = G_img ? 255 : p;
       }
     m.putImageData(w, 0, 0), this._ctx.clearRect(0, 0, this._w, this._h), this._ctx.drawImage(x, 0, 0, this._w, this._h);
   }
