@@ -3087,8 +3087,31 @@ class Vo {
           const K = H.map(([X, q]) => [
             t[0] + X / (F - 1) * k,
             n[0] + q / (v - 1) * D
-          ]), V = document.createElementNS(U, "path");
-          V.setAttribute("d", this._path({ type: "LineString", coordinates: K })), V.setAttribute("fill", "none"), V.setAttribute("stroke", Z), V.setAttribute("stroke-width", String(u)), j.appendChild(V);
+          ]);
+          const segments = [];
+          let currentSegment = [K[0]];
+          for (let m = 0; m < K.length - 1; m++) {
+            const p1 = K[m];
+            const p2 = K[m + 1];
+            if (Math.abs(p1[0] - p2[0]) > 180) {
+              segments.push(currentSegment);
+              currentSegment = [p2];
+            } else {
+              currentSegment.push(p2);
+            }
+          }
+          if (currentSegment.length > 0) {
+            segments.push(currentSegment);
+          }
+          for (const seg of segments) {
+            if (seg.length < 2) continue;
+            const V = document.createElementNS(U, "path");
+            V.setAttribute("d", this._path({ type: "LineString", coordinates: seg }));
+            V.setAttribute("fill", "none");
+            V.setAttribute("stroke", Z);
+            V.setAttribute("stroke-width", String(u));
+            j.appendChild(V);
+          }
         }
     }
     return this._svg.appendChild(j), this._layers.push({ id: a, type: "contour", lons: t, lats: n, field: i, opts: r, svgGroup: j }), a;
@@ -3451,8 +3474,31 @@ class Vo {
           const H = Y.map(([V, X]) => [
             t[0] + V / (S - 1) * M,
             n[0] + X / (F - 1) * k
-          ]), K = document.createElementNS(D, "path");
-          K.setAttribute("d", this._path({ type: "LineString", coordinates: H })), K.setAttribute("fill", "none"), K.setAttribute("stroke", N), K.setAttribute("stroke-width", String(f)), U.appendChild(K);
+          ]);
+          const segments = [];
+          let currentSegment = [H[0]];
+          for (let m = 0; m < H.length - 1; m++) {
+            const p1 = H[m];
+            const p2 = H[m + 1];
+            if (Math.abs(p1[0] - p2[0]) > 180) {
+              segments.push(currentSegment);
+              currentSegment = [p2];
+            } else {
+              currentSegment.push(p2);
+            }
+          }
+          if (currentSegment.length > 0) {
+            segments.push(currentSegment);
+          }
+          for (const seg of segments) {
+            if (seg.length < 2) continue;
+            const K = document.createElementNS(D, "path");
+            K.setAttribute("d", this._path({ type: "LineString", coordinates: seg }));
+            K.setAttribute("fill", "none");
+            K.setAttribute("stroke", N);
+            K.setAttribute("stroke-width", String(f));
+            U.appendChild(K);
+          }
         }
     }
     return U;
