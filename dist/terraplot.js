@@ -1150,8 +1150,28 @@ function da(e, t, n, { colorFn: i, alpha: r, levels: a, vmin: o, vmax: s }) {
         m[q + 3] = 0;
         continue;
       }
-      let $ = (H * (1 - Z) * (1 - Y) + K * Z * (1 - Y) + V * (1 - Z) * Y + X * Z * Y - u) / d;
-      a != null && a > 1 && ($ = Math.floor($ * a) / a);
+      const val = H * (1 - Z) * (1 - Y) + K * Z * (1 - Y) + V * (1 - Z) * Y + X * Z * Y;
+      let $ = (val - u) / d;
+      if (a != null) {
+        if (Array.isArray(a)) {
+          if (val < a[0]) {
+            $ = 0;
+          } else if (val >= a[a.length - 1]) {
+            $ = 1;
+          } else {
+            let idx = 0;
+            for (let idx2 = 0; idx2 < a.length - 1; idx2++) {
+              if (val >= a[idx2] && val < a[idx2 + 1]) {
+                idx = idx2;
+                break;
+              }
+            }
+            $ = (idx + 0.5) / (a.length - 1);
+          }
+        } else if (a > 1) {
+          $ = Math.floor($ * a) / a;
+        }
+      }
       const [gt, _e, Je] = i(Math.max(0, Math.min(1, $)));
       m[q] = gt, m[q + 1] = _e, m[q + 2] = Je, m[q + 3] = w;
     }
@@ -3483,7 +3503,26 @@ class Vo {
           continue;
         }
         let D = (k - l) / u;
-        o != null && o > 1 && (D = Math.floor(D * o) / o);
+        if (o != null) {
+          if (Array.isArray(o)) {
+            if (k < o[0]) {
+              D = 0;
+            } else if (k >= o[o.length - 1]) {
+              D = 1;
+            } else {
+              let idx = 0;
+              for (let idx2 = 0; idx2 < o.length - 1; idx2++) {
+                if (k >= o[idx2] && k < o[idx2 + 1]) {
+                  idx = idx2;
+                  break;
+                }
+              }
+              D = (idx + 0.5) / (o.length - 1);
+            }
+          } else if (o > 1) {
+            D = Math.floor(D * o) / o;
+          }
+        }
         const [U, j, y] = r(Math.max(0, Math.min(1, D)));
         const alpha_f = p / 255.0;
         G[N] = Math.round(U * alpha_f + bgR * (1 - alpha_f));
