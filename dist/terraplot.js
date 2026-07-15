@@ -1145,7 +1145,7 @@ function da(e, t, n, { colorFn: i, alpha: r, levels: a, vmin: o, vmax: s }) {
   const g = b.getContext("2d"), x = g.createImageData(Lt, qt), m = x.data, w = Math.round(Math.max(0, Math.min(1, r)) * 255);
   for (let G = 0; G < qt; G++)
     for (let S = 0; S < Lt; S++) {
-      const F = e[0] + S / Lt * (e[h - 1] - e[0]), v = E ? t[c - 1] - G / qt * (t[c - 1] - t[0]) : t[0] - G / qt * (t[0] - t[c - 1]), P = (F - e[0]) / (e[h - 1] - e[0]), M = E ? 1 - (v - t[0]) / (t[c - 1] - t[0]) : (t[0] - v) / (t[0] - t[c - 1]), k = P * (h - 1), D = M * (c - 1), U = Math.max(0, Math.floor(k)), j = Math.min(U + 1, h - 1), y = Math.max(0, Math.floor(D)), N = Math.min(y + 1, c - 1), Z = k - U, Y = D - y, H = f(y, U), K = f(y, j), V = f(N, U), X = f(N, j), q = (G * Lt + S) * 4;
+      const F = e[0] + S / Lt * (e[h - 1] - e[0]), v = E ? t[c - 1] - G / qt * (t[c - 1] - t[0]) : t[0] - G / qt * (t[0] - t[c - 1]), P = (F - e[0]) / (e[h - 1] - e[0]), M = E ? (v - t[0]) / (t[c - 1] - t[0]) : (t[0] - v) / (t[0] - t[c - 1]), k = P * (h - 1), D = M * (c - 1), U = Math.max(0, Math.floor(k)), j = Math.min(U + 1, h - 1), y = Math.max(0, Math.floor(D)), N = Math.min(y + 1, c - 1), Z = k - U, Y = D - y, H = f(y, U), K = f(y, j), V = f(N, U), X = f(N, j), q = (G * Lt + S) * 4;
       if (isNaN(H) || isNaN(K) || isNaN(V) || isNaN(X)) {
         m[q + 3] = 0;
         continue;
