@@ -1430,7 +1430,14 @@ class Ca {
         for (const mt of q) {
           const $ = d > 0 ? Ja(mt, d) : mt;
           for (let gt = 0; gt < $.length - 1; gt++) {
-            const [_e, Je] = $[gt], [tr, er] = $[gt + 1], nr = t[0] + _e / (E - 1) * k, ir = n[0] + Je / (b - 1) * M, rr = t[0] + tr / (E - 1) * k, ar = n[0] + er / (b - 1) * M;
+            const [_e, Je] = $[gt], [tr, er] = $[gt + 1];
+            if ((_e < 0.01 && tr < 0.01) ||
+                (_e > E - 1.01 && tr > E - 1.01) ||
+                (Je < 0.01 && er < 0.01) ||
+                (Je > b - 1.01 && er > b - 1.01)) {
+              continue;
+            }
+            const nr = t[0] + _e / (E - 1) * k, ir = n[0] + Je / (b - 1) * M, rr = t[0] + tr / (E - 1) * k, ar = n[0] + er / (b - 1) * M;
             D.push(...Vn(ir, nr, g), ...Vn(ar, rr, g)), U.push(K, V, X, K, V, X);
           }
         }
@@ -3094,6 +3101,16 @@ class Vo {
           for (let m = 0; m < K.length - 1; m++) {
             const p1 = K[m];
             const p2 = K[m + 1];
+            const [X1, q1] = H[m];
+            const [X2, q2] = H[m + 1];
+            if ((X1 < 0.01 && X2 < 0.01) ||
+                (X1 > F - 1.01 && X2 > F - 1.01) ||
+                (q1 < 0.01 && q2 < 0.01) ||
+                (q1 > v - 1.01 && q2 > v - 1.01)) {
+              segments.push(currentSegment);
+              currentSegment = [p2];
+              continue;
+            }
             const proj1 = this._proj(p1);
             const proj2 = this._proj(p2);
             let split = false;
@@ -3494,6 +3511,16 @@ class Vo {
           for (let m = 0; m < H.length - 1; m++) {
             const p1 = H[m];
             const p2 = H[m + 1];
+            const [V1, X1] = Y[m];
+            const [V2, X2] = Y[m + 1];
+            if ((V1 < 0.01 && V2 < 0.01) ||
+                (V1 > S - 1.01 && V2 > S - 1.01) ||
+                (X1 < 0.01 && X2 < 0.01) ||
+                (X1 > F - 1.01 && X2 > F - 1.01)) {
+              segments.push(currentSegment);
+              currentSegment = [p2];
+              continue;
+            }
             const proj1 = this._proj(p1);
             const proj2 = this._proj(p2);
             let split = false;
