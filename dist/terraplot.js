@@ -3378,7 +3378,7 @@ class Vo {
         const [P, M] = v;
         if (!isFinite(P) || !isFinite(M)) continue;
         const projected = this._proj([P, M]);
-        if (projected && Math.abs(projected[0] - px) > 1.0) continue;
+        if (projected && (Math.abs(projected[0] - px) > 1.0 || Math.abs(projected[1] - py) > 1.0)) continue;
         const k = Xe(P, M, n, i, s, h, c);
         if (isNaN(k)) continue;
         let D = (k - l) / u;
@@ -3428,7 +3428,7 @@ class Vo {
       return;
     }
     const projected = this._proj([o, s]);
-    if (projected && Math.abs(projected[0] - i) > 1.0) {
+    if (projected && (Math.abs(projected[0] - i) > 1.0 || Math.abs(projected[1] - r) > 1.0)) {
       this._tip.style.display = "none";
       return;
     }
