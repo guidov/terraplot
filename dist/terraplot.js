@@ -3367,21 +3367,18 @@ class Vo {
     for (let S = 0; S < E; S++)
       for (let F = 0; F < d; F++) {
         const px = (F + 0.5) * b, py = (S + 0.5) * g;
-        if (this._proj) {
+        if (this._projName && this._projName.toLowerCase().includes("orthographic")) {
           const [tx, ty] = this._proj.translate();
           const sc = this._proj.scale();
-          if (this._projName && this._projName.toLowerCase().includes("orthographic")) {
-            const dx = px - tx, dy = py - ty;
-            if (dx * dx + dy * dy > sc * sc) continue;
-          } else {
-            // Stop horizontal wrapping/repetition beyond primary map boundaries
-            if (px < tx - sc * Math.PI || px > tx + sc * Math.PI) continue;
-          }
+          const dx = px - tx, dy = py - ty;
+          if (dx * dx + dy * dy > sc * sc) continue;
         }
         const v = this._proj.invert([px, py]);
         if (!v) continue;
         const [P, M] = v;
         if (!isFinite(P) || !isFinite(M)) continue;
+        const projected = this._proj([P, M]);
+        if (projected && Math.abs(projected[0] - px) > 1.0) continue;
         const k = Xe(P, M, n, i, s, h, c);
         if (isNaN(k)) continue;
         let D = (k - l) / u;
@@ -3411,20 +3408,13 @@ class Vo {
   _onMove(t) {
     if (!this._tip || !this._fieldData) return;
     const n = this._canvas.getBoundingClientRect(), i = t.clientX - n.left, r = t.clientY - n.top;
-    if (this._proj) {
+    if (this._projName && this._projName.toLowerCase().includes("orthographic")) {
       const [tx, ty] = this._proj.translate();
       const sc = this._proj.scale();
-      if (this._projName && this._projName.toLowerCase().includes("orthographic")) {
-        const dx = i - tx, dy = r - ty;
-        if (dx * dx + dy * dy > sc * sc) {
-          this._tip.style.display = "none";
-          return;
-        }
-      } else {
-        if (i < tx - sc * Math.PI || i > tx + sc * Math.PI) {
-          this._tip.style.display = "none";
-          return;
-        }
+      const dx = i - tx, dy = r - ty;
+      if (dx * dx + dy * dy > sc * sc) {
+        this._tip.style.display = "none";
+        return;
       }
     }
     const a = this._proj.invert([i, r]);
@@ -3434,6 +3424,11 @@ class Vo {
     }
     const [o, s] = a;
     if (!isFinite(o) || !isFinite(s)) {
+      this._tip.style.display = "none";
+      return;
+    }
+    const projected = this._proj([o, s]);
+    if (projected && Math.abs(projected[0] - i) > 1.0) {
       this._tip.style.display = "none";
       return;
     }
